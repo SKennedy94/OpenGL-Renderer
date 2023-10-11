@@ -4,6 +4,7 @@
 
 #include "VertexBuffer.h"
 #include "VertexBufferLayout.h"
+#include "Texture.h"
 
 int main(void)
 {
@@ -37,8 +38,13 @@ int main(void)
     glfwSwapInterval(1);
 
     //init glad
-    int version = gladLoadGL(glfwGetProcAddress);
-    printf("GL %d.%d\n", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+    if (!gladLoadGL(glfwGetProcAddress))
+    {
+        std::cout << "Failed to initialize GLAD" << std::endl;
+        return -1;
+    }
+
+    std::cout << "[OpenGL Version]: " << glGetString(GL_VERSION) << std::endl;
 
     {
         // indicies to create a square
@@ -49,11 +55,15 @@ int main(void)
 
         //vertex positions of a square
         float positions[]{
-            -0.5f, -0.5f,
-            0.5f, -0.5f,
-            0.5f, 0.5f,
-            -0.5f, 0.5f
+            -0.5f, -0.5f, 0.0f, 0.0f,   //BL
+             0.5f, -0.5f, 1.0f, 0.0f,   //BR
+             0.5f,  0.5f, 1.0f, 1.0f,   //TP
+            -0.5f,  0.5f, 0.0f, 1.0f    //TL
         };
+    // Vertici positions // UV Coords
+        //need to enable blending and create a blend func with parameters for blending (Textures)
+        GLCall(glEnable(GL_BLEND));
+        GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
         //docs.gl for documentation
         //start creating OpenGL elements needed for rendering
@@ -61,14 +71,18 @@ int main(void)
         VertexBuffer vbo(positions, sizeof(positions));
         VertexBufferLayout layout;
         layout.Push<float>(2);
+        layout.Push<float>(2);
         vao.AddBuffer(vbo, layout);
 
         IndexBuffer ibo(indices, 6);
 
         Shader shader("res/shaders/basic.shader");
         shader.Bind();
-
         shader.SetUniform4f("u_Color", 0.2f, 0.5f, 0.8f, 1.0f);
+
+        Texture texture("res/textures/brick.jpg");
+        texture.Bind();
+        shader.SetUniform1i("u_Texture", 0);
 
         //unbind so we can rebind correct elements at draw call
         vao.Unbind();
