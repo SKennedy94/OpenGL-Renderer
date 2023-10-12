@@ -6,6 +6,9 @@
 #include "VertexBufferLayout.h"
 #include "Texture.h"
 
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+
 int main(void)
 {
     GLFWwindow* window;
@@ -54,14 +57,16 @@ int main(void)
         };
 
         //vertex positions of a square
+    // Vertici positions // UV Coords //
         float positions[]{
             -0.5f, -0.5f, 0.0f, 0.0f,   //BL
              0.5f, -0.5f, 1.0f, 0.0f,   //BR
              0.5f,  0.5f, 1.0f, 1.0f,   //TP
             -0.5f,  0.5f, 0.0f, 1.0f    //TL
         };
-    // Vertici positions // UV Coords
+    
         //need to enable blending and create a blend func with parameters for blending (Textures)
+        //Math is (srcR * srcA) + (destR * (1 - srcA)) = blended R value do this for all color channels
         GLCall(glEnable(GL_BLEND));
         GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
@@ -76,9 +81,12 @@ int main(void)
 
         IndexBuffer ibo(indices, 6);
 
+        glm::mat4 proj = glm::ortho(-2.0f,2.0f,-1.5f,1.5f,-1.0f,1.0f);
+
         Shader shader("res/shaders/basic.shader");
         shader.Bind();
-        shader.SetUniform4f("u_Color", 0.2f, 0.5f, 0.8f, 1.0f);
+        shader.SetUniform4f("u_Color", glm::vec4(0.2f, 0.5f, 0.8f, 1.0f));
+        shader.SetUniformMat4f("u_MVP", proj);
 
         Texture texture("res/textures/brick.jpg");
         texture.Bind();
@@ -106,7 +114,7 @@ int main(void)
             //bind the correct elements before next draw call
             shader.Bind();
             //set the uniform values before next draw call
-            shader.SetUniform4f("u_Color", a, 0.5f, 0.8f, 1.0f);
+            shader.SetUniform4f("u_Color", glm::vec4(a, 0.5f, 0.8f, 1.0f));
            
             renderer.Draw(vao,ibo,shader);
 
