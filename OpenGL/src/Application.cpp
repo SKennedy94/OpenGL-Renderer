@@ -9,6 +9,10 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+
 int main(void)
 {
     GLFWwindow* window;
@@ -59,10 +63,10 @@ int main(void)
         //vertex positions of a square
     // Vertici positions // UV Coords //
         float positions[]{
-            -0.5f, -0.5f, 0.0f, 0.0f,   //BL
-             0.5f, -0.5f, 1.0f, 0.0f,   //BR
-             0.5f,  0.5f, 1.0f, 1.0f,   //TP
-            -0.5f,  0.5f, 0.0f, 1.0f    //TL
+            100.0f, 100.0f, 0.0f, 0.0f,   //BL
+             200.0f, 100.0f, 1.0f, 0.0f,   //BR
+             200.0f,  200.0f, 1.0f, 1.0f,   //TR
+            100.0f,  200.0f, 0.0f, 1.0f    //TL
         };
     
         //need to enable blending and create a blend func with parameters for blending (Textures)
@@ -80,13 +84,19 @@ int main(void)
         vao.AddBuffer(vbo, layout);
 
         IndexBuffer ibo(indices, 6);
+        /*Model matrix: defines position, rotation and scale of the vertices of the model in the world.
+          View matrix: defines position and orientation of the "camera".
+          Projection matrix: Maps what the "camera" sees to NDC, taking care of aspect ratio and perspective.
+          All are combined to determine normalized device cordinates */
+        glm::mat4 proj = glm::ortho(0.0f,640.0f,0.0f,480.0f,-1.0f,1.0f);
+        glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(-100,0,0));
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(200,200,0));
 
-        glm::mat4 proj = glm::ortho(-2.0f,2.0f,-1.5f,1.5f,-1.0f,1.0f);
+        glm::mat4 mvp = proj * view * model;
 
         Shader shader("res/shaders/basic.shader");
         shader.Bind();
-        shader.SetUniform4f("u_Color", glm::vec4(0.2f, 0.5f, 0.8f, 1.0f));
-        shader.SetUniformMat4f("u_MVP", proj);
+        shader.SetUniform4f("u_Color", glm::vec4(0.2f, 0.5f, 0.8f, 1.0f)); 
 
         Texture texture("res/textures/brick.jpg");
         texture.Bind();
@@ -100,6 +110,13 @@ int main(void)
 
         Renderer renderer;
 
+        ImGui::CreateContext();
+        ImGui_ImplGlfw_InitForOpenGL(window, true); // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+        ImGui_ImplOpenGL3_Init();
+        ImGui::StyleColorsDark();
+
+        glm::vec3 translation(200, 200, 0);
+
         //change red color value based on offset;
         float a = 0.0f;
         float offset = 0.05f;
@@ -110,12 +127,20 @@ int main(void)
             /* Render here */
             renderer.Clear();
 
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
+
+            glm::mat4 model = glm::translate(glm::mat4(1.0f), translation);
+            glm::mat4 mvp = proj * view * model;
+
             //TODO: convert to use materials
             //bind the correct elements before next draw call
             shader.Bind();
             //set the uniform values before next draw call
             shader.SetUniform4f("u_Color", glm::vec4(a, 0.5f, 0.8f, 1.0f));
-           
+            shader.SetUniformMat4f("u_MVP", mvp);
+
             renderer.Draw(vao,ibo,shader);
 
             if (a > 1.0f)
@@ -128,6 +153,12 @@ int main(void)
             }
             a += offset;
 
+            ImGui::SliderFloat3("Translation", &translation.x, 0.0f, 640.0f);
+            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+            ImGui::Render();
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
             /* Swap front and back buffers */
             glfwSwapBuffers(window);
 
@@ -135,6 +166,10 @@ int main(void)
             glfwPollEvents();
         }
     }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     glfwTerminate();
     return 0;
